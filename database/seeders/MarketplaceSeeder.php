@@ -12,6 +12,7 @@ use App\Models\ProviderProfile;
 use App\Models\SiteSetting;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
@@ -139,6 +140,10 @@ class MarketplaceSeeder extends Seeder
                 ]);
             }
 
+            if (filter_var(env('SEED_DEMO_PROVIDERS', false), FILTER_VALIDATE_BOOLEAN)) {
+                $this->seedProductionDemoProviders($categories, $cities);
+            }
+
             return;
         }
 
@@ -241,5 +246,91 @@ class MarketplaceSeeder extends Seeder
                 ], ['status' => 'matched']);
             }
         }
+    }
+
+    private function seedProductionDemoProviders(array $categories, array $cities): void
+    {
+        $demoPasswordHash = Hash::make(Str::random(64));
+        $timestamp = now()->toDateTimeString();
+        $definitions = [];
+        $users = [];
+        $emails = [];
+
+        foreach ($categories as $service => $category) {
+            foreach ($cities as $city) {
+                for ($number = 1; $number <= 2; $number++) {
+                    $slug = "demo-{$category->slug}-{$city->slug}-{$number}";
+                    $businessName = "Demo {$service} Professional {$number} - {$city->name}";
+                    $email = "{$slug}@example.test";
+                    $emails[] = $email;
+                    $users[] = [
+                        'name' => $businessName,
+                        'email' => $email,
+                        'email_verified_at' => null,
+                        'password' => $demoPasswordHash,
+                        'role' => 'provider',
+                        'created_at' => $timestamp,
+                        'updated_at' => $timestamp,
+                    ];
+                    $definitions[] = compact('slug', 'businessName', 'service', 'city', 'category', 'email');
+                }
+            }
+        }
+
+        DB::transaction(function () use ($definitions, $emails, $timestamp, $users): void {
+            DB::table('users')->upsert(
+                $users,
+                ['email'],
+                ['name', 'email_verified_at', 'password', 'role', 'updated_at'],
+            );
+
+            $userIds = DB::table('users')->whereIn('email', $emails)->pluck('id', 'email');
+            $profiles = [];
+
+            foreach ($definitions as $definition) {
+                $profiles[] = [
+                    'user_id' => $userIds[$definition['email']],
+                    'business_name' => $definition['businessName'],
+                    'slug' => $definition['slug'],
+                    'description' => "Sample {$definition['service']} listing for {$definition['city']->name}. This is demo content, not a real business; contact details are placeholders.",
+                    'phone' => null,
+                    'website' => null,
+                    'logo_path' => null,
+                    'status' => 'approved',
+                    'credit_balance' => 0,
+                    'approved_at' => $timestamp,
+                    'is_demo' => true,
+                    'created_at' => $timestamp,
+                    'updated_at' => $timestamp,
+                ];
+            }
+
+            DB::table('provider_profiles')->upsert(
+                $profiles,
+                ['user_id'],
+                ['business_name', 'slug', 'description', 'phone', 'website', 'logo_path', 'status', 'credit_balance', 'approved_at', 'is_demo', 'updated_at'],
+            );
+
+            $profileIds = DB::table('provider_profiles')
+                ->whereIn('user_id', $userIds->values())
+                ->pluck('id', 'user_id');
+            $categoryRows = [];
+            $cityRows = [];
+
+            foreach ($definitions as $definition) {
+                $profileId = $profileIds[$userIds[$definition['email']]];
+                $categoryRows[] = [
+                    'provider_profile_id' => $profileId,
+                    'category_id' => $definition['category']->id,
+                ];
+                $cityRows[] = [
+                    'provider_profile_id' => $profileId,
+                    'city_id' => $definition['city']->id,
+                ];
+            }
+
+            DB::table('provider_category')->insertOrIgnore($categoryRows);
+            DB::table('provider_service_areas')->insertOrIgnore($cityRows);
+        });
     }
 }

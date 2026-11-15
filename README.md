@@ -59,6 +59,7 @@ The starter `.env.example` uses SQLite, database sessions/cache/queues, and the 
 | `STRIPE_SECRET`, `STRIPE_WEBHOOK_SECRET` | Stripe secret API key and signing secret for the Checkout webhook. Keep these out of logs and source control. |
 | `MARKETPLACE_NAME`, `SITE_CONTACT_EMAIL`, `LEAD_CONSENT_VERSION` | Branding, privacy contact, and the version recorded with homeowner consent. |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Optional first production administrator, used by the production seeder. |
+| `SEED_DEMO_PROVIDERS` | Explicit opt-in to publish clearly labeled, non-loginable sample provider profiles during production seeding. |
 
 For MySQL, set `DB_CONNECTION=mysql`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, and `DB_PASSWORD`; create the database and grant the app user only the required privileges. Never run `migrate:fresh` against production.
 
@@ -73,22 +74,22 @@ php artisan queue:work database --queue=default --tries=3 --timeout=90
 Use Supervisor or the hosting platform's process manager to restart workers after deployment:
 
 ```ini
-[program:omnilead-queue]
-command=php /var/www/omnilead/artisan queue:work database --queue=default --tries=3 --timeout=90
-directory=/var/www/omnilead
+[program:local-home-services-queue]
+command=php /var/www/local-home-services/artisan queue:work database --queue=default --tries=3 --timeout=90
+directory=/var/www/local-home-services
 autostart=true
 autorestart=true
 stopasgroup=true
 killasgroup=true
 user=www-data
 redirect_stderr=true
-stdout_logfile=/var/log/omnilead-queue.log
+stdout_logfile=/var/log/local-home-services-queue.log
 ```
 
 The scheduler prunes failed queue records older than seven days. Add Laravel's scheduler once per minute:
 
 ```cron
-* * * * * cd /var/www/omnilead && php artisan schedule:run >> /dev/null 2>&1
+* * * * * cd /var/www/local-home-services && php artisan schedule:run >> /dev/null 2>&1
 ```
 
 On shared hosting without a process manager, configure a once-per-minute cron job to run `php artisan queue:work --stop-when-empty --tries=3 --timeout=90`. A persistent worker is preferable; queued email will not be delivered until a worker is running.
@@ -158,7 +159,7 @@ This Laravel application needs a PHP container and a persistent PostgreSQL datab
 
 2. Add `APP_KEY` as a sensitive Vercel environment variable and set `APP_URL` to the production URL. The Neon integration supplies `DATABASE_URL`, which the PostgreSQL config accepts.
 3. Deploy with `vercel --archive=tgz` to avoid the CLI's 15,000-file manifest limit. The Vercel CLI excludes `vendor/` during upload; the container installs Composer dependencies and builds Vite assets.
-4. Apply migrations and seed the catalog once using a PHP environment with `pdo_pgsql` and the production database variables. Do not run migrations on every container startup. Demo provider listings are intentionally not seeded in production.
+4. Apply migrations and seed the catalog once using a PHP environment with `pdo_pgsql` and the production database variables. Do not run migrations on every container startup. Production demo provider listings are opt-in: set `SEED_DEMO_PROVIDERS=true` only when intentionally publishing clearly labeled sample profiles; these profiles have no verified login or contact details and do not create fake homeowner leads.
 
 ## Deployment on shared hosting or a small VPS
 
