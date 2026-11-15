@@ -1,6 +1,6 @@
-# OmniLead — UK & US Home Services Marketplace
+# Local Home Services — UK & US Home Services Marketplace
 
-OmniLead connects homeowners with local home-service businesses. Homeowners submit a job request at no charge. Approved, email-verified providers are matched by service and city, receive a contact-safe email preview, and spend credits to unlock the homeowner's contact details.
+Local Home Services connects homeowners with local home-service businesses. Homeowners submit a job request at no charge. Approved, email-verified providers are matched by service and city, receive a contact-safe email preview, and spend credits to unlock the homeowner's contact details.
 
 ## Stack and prerequisites
 
@@ -27,7 +27,7 @@ npm run build
 php artisan serve
 ```
 
-Open `http://127.0.0.1:8000`. The seeded local catalog contains eight services, ten UK cities, five US cities, five demo providers, demo leads, and the legal pages. Local demo provider accounts use `password`; change or remove these fixtures before exposing a non-test environment.
+Open `http://127.0.0.1:8000`. The seeded local catalog contains eight services, ten UK cities, five US cities, two clearly labelled demo listings for every active service/city pair, demo leads, and the legal pages. Local demo provider accounts use `password`; change or remove these fixtures before exposing a non-test environment.
 
 Create a local administrator without committing credentials:
 
