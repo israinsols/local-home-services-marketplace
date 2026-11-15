@@ -1,0 +1,50 @@
+FROM node:20-bookworm-slim AS assets
+
+WORKDIR /app
+COPY . .
+RUN npm ci && npm run build
+
+FROM php:8.3-apache-bookworm
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        libcurl4-openssl-dev \
+        libicu-dev \
+        libonig-dev \
+        libpq-dev \
+        libxml2-dev \
+        libzip-dev \
+        unzip \
+    && docker-php-ext-install -j"$(nproc)" bcmath curl intl mbstring opcache pdo_pgsql xml zip \
+    && a2enmod rewrite \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+WORKDIR /var/www/html
+
+ENV APP_ENV=production \
+    APP_DEBUG=false \
+    DB_CONNECTION=pgsql \
+    LOG_CHANNEL=stderr \
+    CACHE_STORE=array \
+    SESSION_DRIVER=cookie \
+    QUEUE_CONNECTION=sync \
+    LARAVEL_STORAGE_PATH=/tmp/laravel-storage
+
+COPY . .
+COPY --from=assets /app/public/build ./public/build
+
+RUN mkdir -p /tmp/laravel-storage/framework/cache/data \
+        /tmp/laravel-storage/framework/sessions \
+        /tmp/laravel-storage/framework/views \
+        /tmp/laravel-storage/logs \
+        /tmp/laravel-storage/app/private \
+    && composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader \
+    && sed -ri 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/*.conf \
+    && printf '\n<Directory /var/www/html/public>\n    AllowOverride All\n    Require all granted\n</Directory>\n' >> /etc/apache2/apache2.conf \
+    && chown -R www-data:www-data /tmp/laravel-storage
+
+EXPOSE 80
+
+CMD ["sh", "-c", "mkdir -p \"$LARAVEL_STORAGE_PATH/framework/cache/data\" \"$LARAVEL_STORAGE_PATH/framework/sessions\" \"$LARAVEL_STORAGE_PATH/framework/views\" \"$LARAVEL_STORAGE_PATH/logs\" \"$LARAVEL_STORAGE_PATH/app/private\" && chown -R www-data:www-data \"$LARAVEL_STORAGE_PATH\" && exec apache2-foreground"]

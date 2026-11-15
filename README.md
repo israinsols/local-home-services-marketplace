@@ -146,6 +146,20 @@ npm run build
 
 The feature suite covers homeowner lead validation/consent, provider matching and contact-safe notices, idempotent credit unlocks, admin permissions/approval/CSV/credit workflows, verified provider registration, privacy export/erasure, legal/cookie pages, search filtering, and sitemap output including the 50,000-URL boundary.
 
+## Deployment on Vercel (Container Runtime Beta)
+
+This Laravel application needs a PHP container and a persistent PostgreSQL database; the Vite preset alone only builds frontend assets. Vercel's Container Runtime is currently in Beta.
+
+1. Connect a Neon PostgreSQL database to the Vercel project. For a free London-region database:
+
+   ```sh
+   vercel integration add neon --plan free_v3 --metadata region=lhr1 --metadata auth=false
+   ```
+
+2. Add `APP_KEY` as a sensitive Vercel environment variable and set `APP_URL` to the production URL. The Neon integration supplies `DATABASE_URL`, which the PostgreSQL config accepts.
+3. Deploy with `vercel --archive=tgz` to avoid the CLI's 15,000-file manifest limit. The Vercel CLI excludes `vendor/` during upload; the container installs Composer dependencies and builds Vite assets.
+4. Apply migrations and seed the catalog once using a PHP environment with `pdo_pgsql` and the production database variables. Do not run migrations on every container startup. Demo provider listings are intentionally not seeded in production.
+
 ## Deployment on shared hosting or a small VPS
 
 1. Provision PHP 8.2+, `intl`, `pdo_mysql` (or SQLite for a single-node low-volume launch), Composer, and Node in CI/build tooling. Prefer MySQL for production.
