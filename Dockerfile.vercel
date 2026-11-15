@@ -35,7 +35,8 @@ ENV APP_ENV=production \
 COPY . .
 COPY --from=assets /app/public/build ./public/build
 
-RUN mkdir -p /tmp/laravel-storage/framework/cache/data \
+RUN mkdir -p bootstrap/cache \
+        /tmp/laravel-storage/framework/cache/data \
         /tmp/laravel-storage/framework/sessions \
         /tmp/laravel-storage/framework/views \
         /tmp/laravel-storage/logs \
@@ -43,7 +44,7 @@ RUN mkdir -p /tmp/laravel-storage/framework/cache/data \
     && composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader \
     && sed -ri 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/*.conf \
     && printf '\n<Directory /var/www/html/public>\n    AllowOverride All\n    Require all granted\n</Directory>\n' >> /etc/apache2/apache2.conf \
-    && chown -R www-data:www-data /tmp/laravel-storage
+    && chown -R www-data:www-data bootstrap/cache /tmp/laravel-storage
 
 EXPOSE 80
 
