@@ -35,12 +35,14 @@ ENV APP_ENV=production \
 COPY . .
 COPY --from=assets /app/public/build ./public/build
 
-RUN mkdir -p bootstrap/cache \
+RUN mkdir -p /tmp/laravel-storage/bootstrap-cache \
         /tmp/laravel-storage/framework/cache/data \
         /tmp/laravel-storage/framework/sessions \
         /tmp/laravel-storage/framework/views \
         /tmp/laravel-storage/logs \
         /tmp/laravel-storage/app/private \
+    && rm -rf bootstrap/cache \
+    && ln -s /tmp/laravel-storage/bootstrap-cache bootstrap/cache \
     && composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader \
     && sed -ri 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/*.conf \
     && printf '\n<Directory /var/www/html/public>\n    AllowOverride All\n    Require all granted\n</Directory>\n' >> /etc/apache2/apache2.conf \
@@ -48,4 +50,4 @@ RUN mkdir -p bootstrap/cache \
 
 EXPOSE 80
 
-CMD ["sh", "-c", "mkdir -p \"$LARAVEL_STORAGE_PATH/framework/cache/data\" \"$LARAVEL_STORAGE_PATH/framework/sessions\" \"$LARAVEL_STORAGE_PATH/framework/views\" \"$LARAVEL_STORAGE_PATH/logs\" \"$LARAVEL_STORAGE_PATH/app/private\" && chown -R www-data:www-data \"$LARAVEL_STORAGE_PATH\" && exec apache2-foreground"]
+CMD ["sh", "-c", "mkdir -p \"$LARAVEL_STORAGE_PATH/bootstrap-cache\" \"$LARAVEL_STORAGE_PATH/framework/cache/data\" \"$LARAVEL_STORAGE_PATH/framework/sessions\" \"$LARAVEL_STORAGE_PATH/framework/views\" \"$LARAVEL_STORAGE_PATH/logs\" \"$LARAVEL_STORAGE_PATH/app/private\" && chown -R www-data:www-data \"$LARAVEL_STORAGE_PATH\" && exec apache2-foreground"]
